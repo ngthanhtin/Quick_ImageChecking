@@ -8,6 +8,7 @@ from PyQt5.QtGui import QKeySequence
 from actions import ImageViewer
 import sys, os
 import shutil
+from functools import partial
 
 gui = uic.loadUiType("main.ui")[0]     # load UI file designed in Qt Designer
 VALID_FORMAT = ('.BMP', '.GIF', '.JPG', '.JPEG', '.PNG', '.PBM', '.PGM', '.PPM', '.TIFF', '.XBM')  # Image formats supported by Qt
@@ -50,8 +51,8 @@ class Iwindow(QtWidgets.QMainWindow, gui):
             self.image_viewer.zoomMinus()
         if e.key() == QtCore.Qt.Key_R:
             self.image_viewer.resetZoom()
-        if e.key() == QtCore.Qt.Key_D:
-            self.saveImg()
+        # if e.key() == QtCore.Qt.Key_D:
+        #     self.saveImg()
 
     def __connectEvents(self):
         self.open_folder.clicked.connect(self.selectDir)
@@ -60,7 +61,7 @@ class Iwindow(QtWidgets.QMainWindow, gui):
         self.prev_im.clicked.connect(self.prevImg)
         self.qlist_images.itemClicked.connect(self.item_click)
         # self.qlist_save_images.itemClicked.connect(self.item_click)
-        self.save_im.clicked.connect(self.saveImg)
+        # self.save_im.clicked.connect(self.saveImg)
 
         self.zoom_plus.clicked.connect(self.image_viewer.zoomPlus)
         self.zoom_minus.clicked.connect(self.image_viewer.zoomMinus)
@@ -108,37 +109,30 @@ class Iwindow(QtWidgets.QMainWindow, gui):
             QtWidgets.QMessageBox.warning(self, 'No Folder Selected', 'Please select a valid Folder')
             return
         
-        labelList = []
-        buttonList = []
+        self.subfolder_label = []
+        self.subbutton = []
         self.subfolders = os.listdir(self.saved_folder)
+        self.subfolders = [self.saved_folder + "/" + f for f in self.subfolders]
         self.num_subfolders = len(self.subfolders)
 
         self.qformlayout = QFormLayout()
 
         for i in range(self.num_subfolders):
-            labelList.append(QLabel(f"{self.subfolders[i]}"))
-            buttonList.append(QPushButton("Save"))
-            self.qformlayout.addRow(labelList[i], buttonList[i])
+            self.subfolder_label.append(QLabel(f"{self.subfolders[i].split('/')[-1]}"))
+            self.subbutton.append(QPushButton(f"Save_{i}"))
+            self.qformlayout.addRow(self.subfolder_label[i], self.subbutton[i])
+        # for i in range(self.num_subfolders):
+            self.subbutton[i].clicked.connect(partial(self.saveImg, self.subfolders[i]))
         
         self.groupBox.setLayout(self.qformlayout)
 
 
-    def saveImg(self):
+    def saveImg(self, path):
+        print(self.saved_folder, path)
         if self.saved_folder is not None:
             current_image_path = self.logs[self.cntr]['path']
             f_name = current_image_path.split('/')[-1]
-            shutil.copyfile(current_image_path, self.saved_folder + f'/{f_name}')
-            # QtWidgets.QMessageBox.warning(self, 'OK', f'You have already saved the image at {self.saved_folder}!')
-
-            #make them appear on the widget
-            self.saved_logs = getImages(self.saved_folder)
-            self.num_saveImages = len(self.saved_logs)
-            self.num_label_2.setText(f'Num: {len(self.saved_logs)}')
-            # make qitems of the image names
-            self.qlist_save_images.clear()
-            self.saved_items = [QtWidgets.QListWidgetItem(log['name']) for log in self.saved_logs]
-            for item in self.saved_items:
-                self.qlist_save_images.addItem(item)        
+            shutil.copyfile(current_image_path, path + f'/{f_name}')
         else:
             QtWidgets.QMessageBox.warning(self, 'Sorry', 'You have not choosen a folder to save!')        
 
